@@ -1,0 +1,17 @@
+[package]
+name = "nestris-ai"
+version = "0.1.0"
+edition = "2021"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[dependencies]
+ahash = "0.8.11"
+# arrayvec = "0.7.4"
+# time_this = "0.2.5"
+
+[dev-dependencies]
+diol = { version = "0.8.3", default-features = false }
+itertools = "0.12.1"
