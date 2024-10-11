@@ -1,5 +1,6 @@
 // #![feature(const_mut_refs)]
 
+use itertools::Itertools;
 use nestris_ai::{const_arrayvec::ArrayVec, consts::input_hz::*, pieces::*, state::*};
 
 fn read_input() {
@@ -34,160 +35,126 @@ fn main() {
     messing();
 }
 
+use nestris_ai::{consts::INPUT_10HZ, pieces::Piece, state::State};
+
+pub fn preset_state(piece: Piece) -> State<'static> {
+    let seq = INPUT_10HZ;
+    let mut c = State::new(piece, 29, &seq);
+
+    c.try_ccw();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.drop();
+
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_right();
+    c.try_right();
+    c.try_right();
+    c.try_cw();
+    c.try_cw();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_right();
+    c.try_right();
+    c.try_cw();
+    c.try_cw();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.drop();
+    c.lock();
+    c.pos = piece.start_pos();
+
+    c.pos = piece.start_pos();
+    c.try_left();
+    c.try_cw();
+    c.try_cw();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_cw();
+    c.try_cw();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_right();
+    c.try_right();
+    c.try_right();
+    c.try_right();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_right();
+    c.try_cw();
+    c.try_cw();
+    c.drop();
+    c.lock();
+
+    c.pos = piece.start_pos();
+    c.try_left();
+    c.try_left();
+    c.try_left();
+    c.drop();
+    c.lock();
+
+    c
+}
+
 fn messing() {
     // for p in Piece::PIECES {
-    let seq = InputSequence::with_tapping_speed(10);
-    let mut c = State::new(Piece::I, 29, &seq);
+    let seq = INPUT_10HZ;
+    let mut c = State::new(Piece::T, 29, &seq);
 
-    // c.try_ccw();
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.drop();
-    // println!("{c}");
 
-    // c.drop();
-    // println!("{c}");
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
+    let mut rng = nanorand::WyRand::new();
+    use nanorand::{Rng, RandomGen};
 
-    c.pos = Piece::L.start_pos();
-    c.try_right();
-    c.try_right();
-    c.try_right();
-    c.try_cw();
-    c.try_cw();
-    c.drop();
-    println!("{c}");
-    println!("surface: {:?}", c.surface);
-    c.lock();
-    println!("surface: {:?}", c.surface);
+    loop {
+        let states = c.search_drop_first_specialized();
+    
+        let (score, best_state) = states
+            .clone()
+            .into_iter()
+            .map(|state| {
+                let mut cloned_state = c.clone();
+                cloned_state.pos = state;
+                cloned_state.lock();
+                (cloned_state.eval_board(), cloned_state)
+            })
+            .sorted_by(|(e1, _), (e2, _)| e1.cmp(&e2))
+            .next()
+            .unwrap();
+    
+        c = best_state;
+        c.pos = Piece::PIECES[rng.generate_range(0..7)].start_pos();
+        
+        println!("best state:\n{c}\nscore: {score}\nsurface: {:?}\n", c.surface);
 
-    c.pos = Piece::T.start_pos();
-    c.try_right();
-    c.try_right();
-    c.try_cw();
-    c.try_cw();
-    c.drop();
-    println!("surface: {:?}", c.surface);
-    c.lock();
-    println!("surface: {:?}", c.surface);
-
-    c.pos = Piece::O.start_pos();
-    println!("{c}");
-    c.try_left();
-    c.try_left();
-    c.try_left();
-    c.drop();
-    println!("surface: {:?}", c.surface);
-    c.lock();
-    println!("surface: {:?}", c.surface);
-    c.pos = Piece::S.start_pos();
-    println!("{c}");
-
-    c.pos = Piece::J.start_pos();
-    // c.try_left();
-    // c.try_cw();
-    // c.try_cw();
-    // c.drop();
-    // println!("{c}");
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::J.start_pos();
-    // c.try_cw();
-    // c.try_cw();
-    // c.drop();
-    // println!("{c}");
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::O.start_pos();
-    // println!("{c}");
-    // c.try_right();
-    // c.try_right();
-    // c.try_right();
-    // c.try_right();
-    // c.drop();
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::S.start_pos();
-    // println!("{c}");
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.drop();
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::T.start_pos();
-    // c.try_right();
-    // c.try_cw();
-    // c.try_cw();
-    // c.drop();
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::L.start_pos();
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.drop();
-    // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-    // println!("{c}");
-
-    // c.pos = Piece::J.start_pos();
-    let boards = c.search_depth(1);
-    for b in boards.clone() {
-        c.board = b;
-        println!("{c}");
+        read_input();
     }
-    // println!("{}", c.input_sequence);
-    println!("found: {:?}", boards.len());
-    // c.try_left();
-    // c.try_left();
-    // c.try_cw();
-    // c.try_left();
-    // c.try_left();
-    // c.try_left();
-    // c.drop();
-    // println!("{c}");
+
+
     // println!("surface: {:?}", c.surface);
-    // c.lock();
-    // println!("surface: {:?}", c.surface);
-
-    // c.pos = Piece::S.start_pos();
-    // println!("{c}");
-
-    // read_input();
-    // assert!(c.try_ccw());
-    // println!("{c}\n{:?}", c.pos.rot);
-    // read_input();
-    // assert!(c.try_ccw());
-    // println!("{c}\n{:?}", c.pos.rot);
-    // read_input();
-    // assert!(c.try_ccw());
-    // println!("{c}\n{:?}", c.pos.rot);
-    // read_input();
-    // assert!(c.try_ccw());
-    // println!("{c}\n{:?}", c.pos.rot);
-    // read_input();
-    // let states = c.search_iteratively();
-
-    // for state in states {
-    //     c.pos = state;
-    //     println!("{c}");
-    // }
-    // }
 }

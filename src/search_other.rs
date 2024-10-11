@@ -15,7 +15,7 @@ impl<'a> State<'a> {
                 let mut state = self.const_clone();
 
                 state
-                    .search()
+                    .search_visited_first()
                     .into_iter()
                     .map(|pos| {
                         state.pos = pos;
@@ -32,7 +32,7 @@ impl<'a> State<'a> {
 
                 let mut state = self.const_clone();
 
-                for pos in state.search() {
+                for pos in state.search_visited_first() {
                     state.pos = pos;
                     state.fast_lock();
                     state.search_rec_visited_first_depth_helper(depth - 1, &mut encountered);
@@ -63,7 +63,7 @@ impl<'a> State<'a> {
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
         
-                    for pos in state.search() {
+                    for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.fast_lock();
         
@@ -79,7 +79,7 @@ impl<'a> State<'a> {
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
         
-                    for pos in state.search() {
+                    for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.fast_lock();
         
@@ -95,7 +95,7 @@ impl<'a> State<'a> {
     }
 
     pub const fn search_rec_naive(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
         self.search_rec_naive_helper(&mut visited, &mut final_states);
@@ -159,7 +159,7 @@ impl<'a> State<'a> {
     }
 
     pub const fn search_rec_select_rot(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
         self.search_rec_select_rot_helper(&mut visited, &mut final_states);
@@ -237,7 +237,7 @@ impl<'a> State<'a> {
     }
 
     pub const fn search_rec_specialized(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
         match self.pos.piece {

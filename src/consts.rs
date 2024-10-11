@@ -1,13 +1,14 @@
 use crate::state::Board;
 
-pub const BOARD_SIZE: usize = 24;
+pub const BOARD_COLS: usize = 10;
+pub const BOARD_ROWS: usize = 24;
 pub const EMPTY_ROW: u16 = 0b0010000000000100;
 pub const FULL_ROW: u16 = 0b0011111111111100;
 pub const BOT_ROW: u16 = u16::MAX;
 pub const LEFT_BIT: u16 = 0b1000_0000_0000_0000;
 pub const EMPTY_BOARD: Board = {
-    let mut board = [EMPTY_ROW; BOARD_SIZE];
-    board[BOARD_SIZE - 1] = BOT_ROW;
+    let mut board = [EMPTY_ROW; BOARD_ROWS];
+    board[BOARD_ROWS - 1] = BOT_ROW;
     board
 };
 pub const TRY_TUCK: u16 = 0b1000_0000_0000_0000;

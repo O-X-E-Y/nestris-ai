@@ -14,7 +14,7 @@ impl<'a> State<'a> {
                 let mut state = self.const_clone();
 
                 state
-                    .search()
+                    .search_visited_first()
                     .into_iter()
                     .map(|pos| {
                         state.pos = pos;
@@ -32,7 +32,7 @@ impl<'a> State<'a> {
 
                 let mut state = self.const_clone();
 
-                for pos in state.search() {
+                for pos in state.search_visited_first() {
                     state.pos = pos;
                     state.lock();
                     state.search_rec_separate_final_depth_helper(depth - 1, &mut encountered, &mut final_states);
@@ -59,7 +59,7 @@ impl<'a> State<'a> {
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
 
-                    for pos in state.search() {
+                    for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.lock();
 
@@ -77,7 +77,7 @@ impl<'a> State<'a> {
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
 
-                    for pos in state.search() {
+                    for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.lock();
 
@@ -92,8 +92,102 @@ impl<'a> State<'a> {
         }
     }
 
-    pub const fn search(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+    #[inline(always)]
+    pub const fn search_drop_first(&mut self) -> ArrayVec<PiecePos, 64> {
+        let mut visited = [[0; BOARD_ROWS]; 4];
+        let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
+
+        self.search_rec_drop_first_helper(&mut visited, &mut final_states);
+
+        final_states
+    }
+
+    #[inline(always)]
+    const fn search_rec_drop_first_helper(
+        &mut self,
+        visited: &mut [Board; 4],
+        final_states: &mut ArrayVec<PiecePos, 64>,
+    ) {
+        self.pos.down();
+
+        if self.visited(visited) {
+            self.pos.up();
+            self.search_drop_first_movement_helper(visited, final_states);
+            return;
+        }
+
+        self.visit(visited);
+        
+        self.search_drop_first_movement_helper(visited, final_states);
+
+        if !self.collision() {
+            self.search_rec_drop_first_helper(visited, final_states);
+            self.pos.up();
+        } else {
+            self.pos.up();
+            final_states.push(self.pos);
+        }
+    }
+
+    #[inline(always)]
+    const fn search_drop_first_movement_helper(
+        &mut self,
+        visited: &mut [Board; 4],
+        final_states: &mut ArrayVec<PiecePos, 64>,
+    ) {
+        match self.pos.piece {
+            Piece::J | Piece::L | Piece::T => {
+                self.pos.cw();
+                if !self.visited(visited) && !self.collision() {
+                    self.visit(visited);
+                    self.search_rec_drop_first_helper(visited, final_states);
+                }
+                // equivalent to rotating ccw twice
+                self.pos.flip();
+
+                if !self.visited(visited) && !self.collision() {
+                    self.visit(visited);
+                    self.search_rec_drop_first_helper(visited, final_states);
+                }
+                self.pos.cw();
+            }
+            Piece::I | Piece::S | Piece::Z => {
+                self.pos.cw();
+                if !self.visited(visited) && !self.collision() {
+                    self.visit(visited);
+                    self.search_rec_drop_first_helper(visited, final_states);
+                }
+                self.pos.ccw();
+            }
+            Piece::O => {}
+        }
+
+        self.pos.x += 1;
+        if !self.visited(visited) {
+            self.pos.masks >>= 1;
+            if !self.collision() {
+                self.visit(visited);
+                self.search_rec_drop_first_helper(visited, final_states);
+            }
+            self.pos.masks <<= 1;
+        }
+        self.pos.x -= 1;
+
+        self.pos.x -= 1;
+        if !self.visited(visited) {
+            self.pos.masks <<= 1;
+            if !self.collision() {
+                self.visit(visited);
+                self.search_rec_drop_first_helper(visited, final_states);
+            }
+            self.pos.masks >>= 1;
+        }
+        self.pos.x += 1;
+    }
+
+    #[inline(always)]
+    pub const fn search_visited_first(&mut self) -> ArrayVec<PiecePos, 64> {
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
         self.search_rec_select_rot_visited_first_helper(&mut visited, &mut final_states);
@@ -101,12 +195,13 @@ impl<'a> State<'a> {
         final_states
     }
 
+    #[inline(always)]
     const fn search_rec_select_rot_visited_first_helper(
         &mut self,
         visited: &mut [Board; 4],
         final_states: &mut ArrayVec<PiecePos, 64>,
     ) {
-        // flip before left/right seems to improve performance
+        // flip before checking left/right seems to improve performance
         match self.pos.piece {
             Piece::J | Piece::L | Piece::T => {
                 self.pos.cw();
@@ -175,7 +270,7 @@ impl<'a> State<'a> {
     }
 
     pub const fn search_const(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
         let mut stack = ArrayVec::<_, 128>::new_const(PiecePos::DEFAULT);
 
@@ -272,7 +367,16 @@ pub mod tests {
             state.search_rec_select_rot();
             assert_eq!(state, reference);
 
-            state.search();
+            state.search_visited_first();
+            assert_eq!(state, reference);
+
+            state.search_drop_first_alt();
+            assert_eq!(state, reference);
+
+            state.search_drop_first();
+            assert_eq!(state, reference);
+
+            state.search_drop_first_specialized();
             assert_eq!(state, reference);
 
             state.search_const();
@@ -293,9 +397,17 @@ pub mod tests {
                 .into_iter()
                 .collect::<HashSet<_>>();
             let visited = state
-                .search()
+                .search_visited_first()
                 .into_iter()
                 .map(Into::into)
+                .collect::<HashSet<_>>();
+            let drop_first = state
+                .search_drop_first()
+                .into_iter()
+                .collect::<HashSet<_>>();
+            let drop_first_specialized = state
+                .search_drop_first_specialized()
+                .into_iter()
                 .collect::<HashSet<_>>();
             let iterative = state
                 .search_const()
@@ -308,6 +420,8 @@ pub mod tests {
 
             assert_eq!(naive, select);
             assert_eq!(naive, visited);
+            assert_eq!(naive, drop_first);
+            assert_eq!(naive, drop_first_specialized);
             assert_eq!(naive, iterative);
             assert_eq!(naive, specialized);
         }

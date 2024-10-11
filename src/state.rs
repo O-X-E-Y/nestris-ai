@@ -2,7 +2,8 @@ use std::marker::PhantomData;
 
 use crate::{consts::*, pieces::*, util::*};
 
-pub type Board = [u16; BOARD_SIZE];
+pub type Board = [u16; BOARD_ROWS];
+pub type VisitedAlt = [[[u8; 13]; BOARD_ROWS]; 4];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PiecePos {
@@ -418,7 +419,7 @@ impl Default for InputSequence {
 #[derive(Debug, Clone, PartialEq)]
 pub struct State<'a> {
     pub board: Board,
-    pub surface: [u8; 10],
+    pub surface: [u8; BOARD_COLS],
     pub highest_block: u8,
     pub pos: PiecePos,
     pub next: Option<Piece>,
@@ -437,7 +438,7 @@ impl<'a> State<'a> {
     pub const fn new(piece: Piece, level: u8, input_sequence: &'a InputSequence) -> Self {
         Self {
             board: EMPTY_BOARD,
-            surface: [0; 10],
+            surface: [0; BOARD_COLS],
             highest_block: 0,
             pos: piece.start_pos(),
             next: None,
@@ -554,7 +555,7 @@ impl<'a> State<'a> {
     }
 
     #[inline(always)]
-    pub(crate) const fn fast_lock(&mut self) {
+    pub const fn fast_lock(&mut self) {
         let [mask1, mask2, mask3, mask4] = self.pos.masks();
 
         self.board[self.pos.y as usize] |= mask1;
@@ -594,8 +595,8 @@ impl<'a> State<'a> {
         };
 
         let mut y = (self.pos.y + y_max) as usize;
-        if y > BOARD_SIZE - 2 {
-            y = BOARD_SIZE - 2;
+        if y > BOARD_ROWS - 2 {
+            y = BOARD_ROWS - 2;
         }
         let mut cleared = 0;
 
@@ -613,15 +614,16 @@ impl<'a> State<'a> {
             y -= 1;
         }
 
-        // self.lines += cleared as u16;
-        // match cleared {
-        //     0 => {}
-        //     1 => self.score += 40 * cleared as u32,
-        //     2 => self.score += 100 * cleared as u32,
-        //     3 => self.score += 300 * cleared as u32,
-        //     4 => self.score += 1200 * cleared as u32,
-        //     _ => panic!("Clearing more than 4 lines at once should still be impossible"),
-        // }
+        self.lines += cleared as u16;
+
+        match cleared {
+            0 => {}
+            1 => self.score += 40 * (self.level as u32 + 1),
+            2 => self.score += 100 * (self.level as u32 + 1),
+            3 => self.score += 300 * (self.level as u32 + 1),
+            4 => self.score += 1200 * (self.level as u32 + 1),
+            _ => panic!("Clearing more than 4 lines at once should still be impossible"),
+        }
     }
 
     /// NOTE: assumes the board is in a legal state.
@@ -681,7 +683,7 @@ impl<'a> State<'a> {
             }
 
             // corrects for the weird x y values everything is offset by
-            let y = BOARD_SIZE as u8 - self.pos.y + ys[i] - 5;
+            let y = BOARD_ROWS as u8 - self.pos.y + ys[i] - 5;
             let x = x_ref + i - offset;
 
             if y > self.surface[x] {
@@ -695,8 +697,8 @@ impl<'a> State<'a> {
         }
 
         let mut y = (self.pos.y + y_max) as usize;
-        if y > BOARD_SIZE - 2 {
-            y = BOARD_SIZE - 2;
+        if y > BOARD_ROWS - 2 {
+            y = BOARD_ROWS - 2;
         }
         let mut cleared = 0;
 
@@ -734,7 +736,7 @@ impl<'a> State<'a> {
 
     pub const fn drop(&mut self) {
         let mut i = 0;
-        while i < BOARD_SIZE {
+        while i < BOARD_ROWS {
             self.try_down();
             i += 1;
         }
@@ -765,6 +767,16 @@ impl<'a> State<'a> {
     pub(crate) const fn visit(&self, visited: &mut [Board; 4]) {
         visited[self.pos.rot as usize][self.pos.y as usize] |= LEFT_BIT >> self.pos.x;
     }
+
+    #[inline(always)]
+    pub(crate) const fn visited_alt(&self, visited: &VisitedAlt) -> bool {
+        visited[self.pos.rot as usize][self.pos.y as usize][self.pos.x as usize] != 0
+    }
+
+    #[inline(always)]
+    pub(crate) const fn visit_alt(&self, visited: &mut VisitedAlt) {
+        visited[self.pos.rot as usize][self.pos.y as usize][self.pos.x as usize] = 1;
+    }
 }
 
 impl<'a> std::fmt::Display for State<'a> {
@@ -772,7 +784,7 @@ impl<'a> std::fmt::Display for State<'a> {
         let y = self.pos.y as usize;
         let masks = self.pos.masks();
 
-        (18..(BOARD_SIZE - 1)).for_each(|i| {
+        (3..(BOARD_ROWS - 1)).for_each(|i| {
             let mut row = self.board[i].reverse_bits();
             if (y..(y + 4)).contains(&i) {
                 row |= masks[i - y].reverse_bits();

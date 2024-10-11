@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod util;
+
 use std::hint::black_box;
 
 use diol::prelude::*;
@@ -15,15 +17,21 @@ fn main() -> std::io::Result<()> {
     let mut bench = Bench::new(BenchConfig::from_args()?);
     bench.register_many(
         list![
-            search_naive,
+            // search_naive,
             // search_specialized,
             // search_select_rot,
             // search_const,
-            search_smart,
-            search_visited_first,
+            // search_smart,
+            // search_visited_first,
+            // search_drop_first,
+            // search_drop_first_alt,
+            search_drop_first_specialized
+            // search_const_drop_first
+            // search_visited_first_alt,
         ],
         Piece::PIECES,
     );
+    bench.register(eval_preset_state, Piece::PIECES);
     // bench.register(search_depth_3, Piece::PIECES);
     // bench.register_many(
     //     list![search_depth_final_states],
@@ -129,5 +137,44 @@ fn search_select_rot(bencher: Bencher, piece: Piece) {
 fn search_visited_first(bencher: Bencher, piece: Piece) {
     let mut state = State::new(piece, 19, INPUT_30HZ);
 
-    bencher.bench(|| state.search())
+    bencher.bench(|| state.search_visited_first())
+}
+
+fn search_visited_first_alt(bencher: Bencher, piece: Piece) {
+    let mut state = State::new(piece, 19, INPUT_30HZ);
+
+    bencher.bench(|| state.search_drop_first_alt())
+}
+
+fn search_drop_first(bencher: Bencher, piece: Piece) {
+    let mut state = State::new(piece, 19, INPUT_30HZ);
+
+    bencher.bench(|| state.search_drop_first())
+}
+
+fn search_drop_first_specialized(bencher: Bencher, piece: Piece) {
+    // let mut state = State::new(piece, 19, INPUT_30HZ);
+    let mut state = util::preset_state(piece);
+
+    6u64.leading_zeros();
+
+    bencher.bench(|| state.search_drop_first_specialized())
+}
+
+fn search_drop_first_alt(bencher: Bencher, piece: Piece) {
+    let mut state = State::new(piece, 19, INPUT_30HZ);
+
+    bencher.bench(|| state.search_drop_first_alt())
+}
+
+fn search_const_drop_first(bencher: Bencher, piece: Piece) {
+    let mut state = State::new(piece, 19, INPUT_30HZ);
+
+    bencher.bench(|| state.search_const_drop_first())
+}
+
+fn eval_preset_state<'a>(bencher: Bencher, piece: Piece) {
+    let state = util::preset_state(piece);
+
+    bencher.bench(|| state.eval_board())
 }

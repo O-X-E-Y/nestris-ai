@@ -8,10 +8,11 @@ name = "benchmarks"
 harness = false
 
 [dependencies]
-ahash = "0.8.11"
+ahash = "0.8"
+itertools = "0.13"
+nanorand = "0.7"
 # arrayvec = "0.7.4"
 # time_this = "0.2.5"
 
 [dev-dependencies]
-diol = { version = "0.8.3", default-features = false }
-itertools = "0.12.1"
+diol = { version = "0.8", default-features = false }

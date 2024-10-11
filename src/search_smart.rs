@@ -96,7 +96,7 @@ impl<'a> State<'a> {
     fn generate_dropping_positions_left(&mut self, ) {}
     
     pub fn search_smart(&mut self) -> ArrayVec<PiecePos, 64> {
-        let mut visited = [[0; BOARD_SIZE]; 4];
+        let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
         // self.input_frame = self.input_sequence.len() - 1;
