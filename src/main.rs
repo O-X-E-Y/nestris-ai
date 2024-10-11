@@ -1,13 +1,13 @@
 // #![feature(const_mut_refs)]
 
 use itertools::Itertools;
-use nestris_ai::{const_arrayvec::ArrayVec, consts::input_hz::*, pieces::*, state::*};
+// use nestris_ai::{const_arrayvec::ArrayVec, consts::input_hz::*, pieces::*, state::*};
 
 fn read_input() {
     let _ = std::io::stdin().read_line(&mut String::new());
 }
 
-trait PrintBitsNum {
+pub trait PrintBitsNum {
     fn print_bits(self);
 }
 
@@ -129,7 +129,7 @@ fn messing() {
 
 
     let mut rng = nanorand::WyRand::new();
-    use nanorand::{Rng, RandomGen};
+    use nanorand::Rng;
 
     loop {
         let states = c.search_drop_first_specialized();

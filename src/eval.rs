@@ -1,5 +1,5 @@
 use crate::{
-    consts::{BOARD_ROWS, LEFT_BIT}, pieces::*, state::*
+    consts::{BOARD_ROWS, LEFT_BIT}, state::*
 };
 
 impl<'a> State<'a> {

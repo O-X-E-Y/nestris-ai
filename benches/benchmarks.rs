@@ -9,7 +9,7 @@ use itertools::Itertools;
 use nestris_ai::prelude::*;
 
 fn main() -> std::io::Result<()> {
-    let pieces_rot = Piece::PIECES
+    let _pieces_rot = Piece::PIECES
         .into_iter()
         .cartesian_product(Rotation::ROTATIONS)
         .collect::<Vec<_>>();

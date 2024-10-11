@@ -93,7 +93,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn generate_dropping_positions_left(&mut self, ) {}
+    // fn generate_dropping_positions_left(&mut self, ) {}
     
     pub fn search_smart(&mut self) -> ArrayVec<PiecePos, 64> {
         let mut visited = [[0; BOARD_ROWS]; 4];
