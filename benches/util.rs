@@ -1,8 +1,8 @@
-use nestris_ai::{consts::INPUT_10HZ, pieces::Piece, state::State};
+use nestris_ai::{consts::INPUT_10HZ, prelude::*};
 
-pub fn preset_state(piece: Piece) -> State<'static> {
+pub fn preset_state<'a>(piece: Piece, w: &'a EvalWeights) -> State<'a> {
     let seq = INPUT_10HZ;
-    let mut c = State::new(piece, 29, &seq);
+    let mut c = State::new(piece, 29, &seq, w);
 
     c.try_ccw();
     c.try_left();

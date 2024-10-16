@@ -3,7 +3,7 @@ use crate::const_arrayvec::ArrayVec;
 use crate::{consts::*, pieces::*, state::*};
 
 impl<'a> State<'a> {
-    pub const fn search_drop_first_alt(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_drop_first_alt(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[[0; 13]; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -15,7 +15,7 @@ impl<'a> State<'a> {
     const fn search_drop_first_alt_helper(
         &mut self,
         visited: &mut VisitedAlt,
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         self.pos.down();
 
@@ -26,7 +26,7 @@ impl<'a> State<'a> {
         }
 
         self.visit_alt(visited);
-        
+
         self.search_drop_first_alt_movement_helper(visited, final_states);
 
         if !self.collision() {
@@ -41,7 +41,7 @@ impl<'a> State<'a> {
     pub const fn search_drop_first_alt_movement_helper(
         &mut self,
         visited: &mut VisitedAlt,
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         // flip before checking left/right seems to improve performance
         match self.pos.piece {
@@ -94,7 +94,7 @@ impl<'a> State<'a> {
         self.pos.x += 1;
     }
 
-    pub const fn search_const_drop_first(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_const_drop_first(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
         let mut stack = ArrayVec::<_, 128>::new_const(PiecePos::DEFAULT);
@@ -110,7 +110,7 @@ impl<'a> State<'a> {
             if self.visited(&visited) {
                 self.pos.up();
                 self.search_const_drop_first_helper(&mut visited, &mut stack);
-                continue
+                continue;
             }
 
             self.visit(&mut visited);
@@ -131,7 +131,11 @@ impl<'a> State<'a> {
     }
 
     #[inline(always)]
-    pub const fn search_const_drop_first_helper(&mut self, visited: &mut [Board; 4], stack: &mut ArrayVec<PiecePos, 128>) {
+    pub const fn search_const_drop_first_helper(
+        &mut self,
+        visited: &mut [Board; 4],
+        stack: &mut ArrayVec<PiecePos, 128>,
+    ) {
         self.pos.x += 1;
         if !self.visited(visited) {
             self.pos.masks >>= 1;

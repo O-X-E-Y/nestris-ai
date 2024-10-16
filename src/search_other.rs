@@ -1,11 +1,6 @@
 use ahash::AHashSet as HashSet;
 
-use crate::{
-    const_arrayvec::ArrayVec,
-    consts::*,
-    pieces::*,
-    state::*,
-};
+use crate::{const_arrayvec::ArrayVec, consts::*, pieces::*, state::*};
 
 impl<'a> State<'a> {
     pub fn search_rec_visited_first_depth(&self, depth: u8) -> Vec<Board> {
@@ -56,45 +51,45 @@ impl<'a> State<'a> {
         encountered: &mut HashSet<(bool, Board)>,
     ) {
         match depth {
-            0 => {},
+            0 => {}
             1 => {
                 let mut state = self.const_clone();
-        
+
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
-        
+
                     for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.fast_lock();
-        
+
                         encountered.insert((true, state.board));
-        
+
                         state = self.const_clone();
                     }
                 }
-            },
-            _ => {        
+            }
+            _ => {
                 let mut state = self.const_clone();
-        
+
                 for start_pos in Piece::START_POSITIONS {
                     state.pos = start_pos;
-        
+
                     for pos in state.search_visited_first() {
                         state.pos = pos;
                         state.fast_lock();
-        
+
                         if encountered.insert((false, state.board)) {
                             state.search_rec_visited_first_depth_helper(depth - 1, encountered);
                         }
-        
+
                         state = self.const_clone();
                     }
                 }
-            },
+            }
         }
     }
 
-    pub const fn search_rec_naive(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_rec_naive(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -106,7 +101,7 @@ impl<'a> State<'a> {
     const fn search_rec_naive_helper(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         if self.try_right() {
             if !self.visited(visited) {
@@ -158,7 +153,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub const fn search_rec_select_rot(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_rec_select_rot(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -170,7 +165,7 @@ impl<'a> State<'a> {
     const fn search_rec_select_rot_helper(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         if self.try_right() {
             if !self.visited(visited) {
@@ -236,7 +231,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub const fn search_rec_specialized(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_rec_specialized(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -252,7 +247,7 @@ impl<'a> State<'a> {
     const fn search_rec_jlt(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         self.pos.x += 1;
         if !self.visited(visited) {
@@ -311,7 +306,7 @@ impl<'a> State<'a> {
     const fn search_rec_isz(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         self.pos.x += 1;
         if !self.visited(visited) {
@@ -363,7 +358,7 @@ impl<'a> State<'a> {
     const fn search_rec_o(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         self.pos.x += 1;
         if !self.visited(visited) {

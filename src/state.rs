@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{consts::*, pieces::*, util::*};
+use crate::{consts::*, pieces::*, util::*, weights::EvalWeights};
 
 pub type Board = [u16; BOARD_ROWS];
 pub type VisitedAlt = [[[u8; 13]; BOARD_ROWS]; 4];
@@ -170,7 +170,7 @@ impl PiecePos {
             (T, South) => T_SOUTH,
             (T, West) => T_WEST,
         };
-        
+
         self.masks = masks >> self.x;
     }
 
@@ -208,7 +208,7 @@ impl PiecePlacement {
 
     pub const fn compact(self) -> CompactPlacement {
         let mut v = 0u16;
-    
+
         v |= (self.x as u16) << 12;
         v |= (self.y as u16) << 7;
         v |= (self.piece as u16) << 4;
@@ -279,7 +279,7 @@ impl CompactPlacement {
             4 => Piece::S,
             5 => Piece::T,
             6 => Piece::Z,
-            _ => return None
+            _ => return None,
         };
         let rot = match self.0 >> 2 & 0b11 {
             0 => Rotation::North,
@@ -289,17 +289,12 @@ impl CompactPlacement {
             _ => return None,
         };
 
-        Some(PiecePlacement {
-            x,
-            y,
-            piece,
-            rot
-        })
+        Some(PiecePlacement { x, y, piece, rot })
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct InputSequence{
+pub struct InputSequence {
     seq: [bool; 32],
     len: usize,
     pub longest_non_press: u8,
@@ -310,14 +305,14 @@ impl InputSequence {
         Self {
             seq: [false; 32],
             len: 1,
-            longest_non_press: 32
+            longest_non_press: 32,
         }
     }
 
     pub const fn with_tapping_speed(tapping_speed: usize) -> Self {
         let mut seq = [false; 32];
         if tapping_speed == 0 {
-            return Self::new()
+            return Self::new();
         }
 
         seq[0] = true;
@@ -334,7 +329,7 @@ impl InputSequence {
         let mut len = 1;
         let mut longest_non_press = 0;
         let mut last_press = 0;
-        
+
         while i < seq.len() {
             if frames_passed >= tap_every {
                 seq[i] = true;
@@ -425,17 +420,23 @@ pub struct State<'a> {
     pub next: Option<Piece>,
     pub level: u8,
     pub lines: u16,
+    pub lines_delta: u8,
     pub score: u32,
     pub input_sequence: &'a InputSequence,
     pub input_frame: usize,
     pub drop_speed: u16,
     pub drop_frame: u16,
-    _marker: PhantomData<&'a Board>
+    pub weights: &'a EvalWeights,
 }
 
 impl<'a> State<'a> {
     #[inline(always)]
-    pub const fn new(piece: Piece, level: u8, input_sequence: &'a InputSequence) -> Self {
+    pub const fn new(
+        piece: Piece,
+        level: u8,
+        input_sequence: &'a InputSequence,
+        weights: &'a EvalWeights,
+    ) -> Self {
         Self {
             board: EMPTY_BOARD,
             surface: [0; BOARD_COLS],
@@ -444,12 +445,13 @@ impl<'a> State<'a> {
             next: None,
             level,
             lines: 0,
+            lines_delta: 0,
             score: 0,
             input_sequence,
             input_frame: 0,
             drop_speed: drop_speed(level),
             drop_frame: 0,
-            _marker: PhantomData
+            weights,
         }
     }
 
@@ -463,12 +465,13 @@ impl<'a> State<'a> {
             next: self.next,
             level: self.level,
             lines: self.lines,
+            lines_delta: self.lines_delta,
             score: self.score,
             input_sequence: self.input_sequence,
             input_frame: self.input_frame,
             drop_speed: self.drop_speed,
             drop_frame: self.drop_frame,
-            _marker: PhantomData
+            weights: self.weights,
         }
     }
 
@@ -555,80 +558,102 @@ impl<'a> State<'a> {
     }
 
     #[inline(always)]
-    pub const fn fast_lock(&mut self) {
-        let [mask1, mask2, mask3, mask4] = self.pos.masks();
-
-        self.board[self.pos.y as usize] |= mask1;
-        self.board[self.pos.y as usize + 1] |= mask2;
-        self.board[self.pos.y as usize + 2] |= mask3;
-        self.board[self.pos.y as usize + 3] |= mask4;
-
+    pub fn fast_lock(&mut self) {
         use Piece::*;
         use Rotation::*;
 
-        let y_max = match (self.pos.piece, self.pos.rot) {
-            (I, North | South) => I_NORTH_SOUTH_Y_MAX,
-            (I, East | West) => I_EAST_WEST_Y_MAX,
+        let (y_vals, x_offset, y_offset) = match (self.pos.piece, self.pos.rot) {
+            (I, North | South) => (
+                I_NORTH_SOUTH_Y_VALS,
+                I_NORTH_SOUTH_X_OFFSET,
+                I_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (I, East | West) => (
+                I_EAST_WEST_Y_VALS,
+                I_EAST_WEST_X_OFFSET,
+                I_EAST_WEST_Y_OFFSET,
+            ),
 
-            (J, North) => J_NORTH_Y_MAX,
-            (J, East) => J_EAST_Y_MAX,
-            (J, South) => J_SOUTH_Y_MAX,
-            (J, West) => J_WEST_Y_MAX,
+            (J, North) => (J_NORTH_Y_VALS, J_NORTH_X_OFFSET, J_NORTH_Y_OFFSET),
+            (J, East) => (J_EAST_Y_VALS, J_EAST_X_OFFSET, J_EAST_Y_OFFSET),
+            (J, South) => (J_SOUTH_Y_VALS, J_SOUTH_X_OFFSET, J_SOUTH_Y_OFFSET),
+            (J, West) => (J_WEST_Y_VALS, J_WEST_X_OFFSET, J_WEST_Y_OFFSET),
 
-            (L, North) => L_NORTH_Y_MAX,
-            (L, East) => L_EAST_Y_MAX,
-            (L, South) => L_SOUTH_Y_MAX,
-            (L, West) => L_WEST_Y_MAX,
+            (L, North) => (L_NORTH_Y_VALS, L_NORTH_X_OFFSET, L_NORTH_Y_OFFSET),
+            (L, East) => (L_EAST_Y_VALS, L_EAST_X_OFFSET, L_EAST_Y_OFFSET),
+            (L, South) => (L_SOUTH_Y_VALS, L_SOUTH_X_OFFSET, L_SOUTH_Y_OFFSET),
+            (L, West) => (L_WEST_Y_VALS, L_WEST_X_OFFSET, L_WEST_Y_OFFSET),
 
-            (O, _) => O_ALL_Y_MAX,
+            (O, _) => (O_ALL_Y_VALS, O_ALL_X_OFFSET, O_ALL_Y_OFFSET),
 
-            (S, North | South) => S_NORTH_SOUTH_Y_MAX,
-            (S, East | West) => S_EAST_WEST_Y_MAX,
+            (S, North | South) => (
+                S_NORTH_SOUTH_Y_VALS,
+                S_NORTH_SOUTH_X_OFFSET,
+                S_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (S, East | West) => (
+                S_EAST_WEST_Y_VALS,
+                S_EAST_WEST_X_OFFSET,
+                S_EAST_WEST_Y_OFFSET,
+            ),
 
-            (T, North) => T_NORTH_Y_MAX,
-            (T, East) => T_EAST_Y_MAX,
-            (T, South) => T_SOUTH_Y_MAX,
-            (T, West) => T_WEST_Y_MAX,
+            (T, North) => (T_NORTH_Y_VALS, T_NORTH_X_OFFSET, T_NORTH_Y_OFFSET),
+            (T, East) => (T_EAST_Y_VALS, T_EAST_X_OFFSET, T_EAST_Y_OFFSET),
+            (T, South) => (T_SOUTH_Y_VALS, T_SOUTH_X_OFFSET, T_SOUTH_Y_OFFSET),
+            (T, West) => (T_WEST_Y_VALS, T_WEST_X_OFFSET, T_WEST_Y_OFFSET),
 
-            (Z, North | South) => Z_NORTH_SOUTH_Y_MAX,
-            (Z, East | West) => Z_EAST_WEST_Y_MAX,
+            (Z, North | South) => (
+                Z_NORTH_SOUTH_Y_VALS,
+                Z_NORTH_SOUTH_X_OFFSET,
+                Z_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (Z, East | West) => (
+                Z_EAST_WEST_Y_VALS,
+                Z_EAST_WEST_X_OFFSET,
+                Z_EAST_WEST_Y_OFFSET,
+            ),
         };
 
-        let mut y = (self.pos.y + y_max) as usize;
-        if y > BOARD_ROWS - 2 {
-            y = BOARD_ROWS - 2;
-        }
-        let mut cleared = 0;
+        let x = self.pos.x - x_offset;
+        let y = y_offset - self.pos.y;
 
-        while y >= self.pos.y as usize - cleared {
+        for i in x..(x + 4).min(10) {
+            let new_y = self.surface[i as usize].max(y + y_vals[(i - x) as usize]);
+            self.highest_block = self.highest_block.max(new_y);
+            self.surface[i as usize] = new_y;
+        }
+
+        let mut cleared = 0;
+        let mut y = BOARD_ROWS - 2;
+
+        while y >= (BOARD_ROWS - 2).saturating_sub(self.highest_block as usize).saturating_sub(cleared).max(1) {
             if self.board[y] & FULL_ROW == FULL_ROW {
                 cleared += 1;
-            }
-            match cleared {
-                0 => {}
-                1 => self.board[y] = self.board[y - 1],
-                c @ 2..=4 => self.board[y + (c - 1)] = self.board[y - 1],
-                _ => panic!("Clearing more than 4 lines at once should be impossible"),
             }
 
             y -= 1;
         }
 
-        self.lines += cleared as u16;
+        if cleared != 0 {
+            self.highest_block -= cleared as u8;
+            self.surface.iter_mut().for_each(|s| *s -= cleared as u8);
 
-        match cleared {
-            0 => {}
-            1 => self.score += 40 * (self.level as u32 + 1),
-            2 => self.score += 100 * (self.level as u32 + 1),
-            3 => self.score += 300 * (self.level as u32 + 1),
-            4 => self.score += 1200 * (self.level as u32 + 1),
-            _ => panic!("Clearing more than 4 lines at once should still be impossible"),
+            let delta = match cleared {
+                1 => 40 * (cleared + 1) as u32,
+                2 => 100 * (cleared + 1) as u32,
+                3 => 300 * (cleared + 1) as u32,
+                4 => 1200 * (cleared + 1) as u32,
+                _ => panic!("Clearing more than 4 lines at once should still be impossible"),
+            };
+
+            self.score += delta;
+            self.lines_delta = cleared as u8;
         }
     }
 
     /// NOTE: assumes the board is in a legal state.
     #[inline(always)]
-    pub const fn lock(&mut self) {
+    pub fn lock(&mut self) {
         let [mask1, mask2, mask3, mask4] = self.pos.masks();
 
         self.board[self.pos.y as usize] |= mask1;
@@ -639,77 +664,79 @@ impl<'a> State<'a> {
         use Piece::*;
         use Rotation::*;
 
-        let (ys, y_max) = match (self.pos.piece, self.pos.rot) {
-            (I, North | South) => (I_NORTH_SOUTH_Y_VALS, I_NORTH_SOUTH_Y_MAX),
-            (I, East | West) => (I_EAST_WEST_Y_VALS, I_EAST_WEST_Y_MAX),
+        let (y_vals, x_offset, y_offset) = match (self.pos.piece, self.pos.rot) {
+            (I, North | South) => (
+                I_NORTH_SOUTH_Y_VALS,
+                I_NORTH_SOUTH_X_OFFSET,
+                I_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (I, East | West) => (
+                I_EAST_WEST_Y_VALS,
+                I_EAST_WEST_X_OFFSET,
+                I_EAST_WEST_Y_OFFSET,
+            ),
 
-            (J, North) => (J_NORTH_Y_VALS, J_NORTH_Y_MAX),
-            (J, East) => (J_EAST_Y_VALS, J_EAST_Y_MAX),
-            (J, South) => (J_SOUTH_Y_VALS, J_SOUTH_Y_MAX),
-            (J, West) => (J_WEST_Y_VALS, J_WEST_Y_MAX),
+            (J, North) => (J_NORTH_Y_VALS, J_NORTH_X_OFFSET, J_NORTH_Y_OFFSET),
+            (J, East) => (J_EAST_Y_VALS, J_EAST_X_OFFSET, J_EAST_Y_OFFSET),
+            (J, South) => (J_SOUTH_Y_VALS, J_SOUTH_X_OFFSET, J_SOUTH_Y_OFFSET),
+            (J, West) => (J_WEST_Y_VALS, J_WEST_X_OFFSET, J_WEST_Y_OFFSET),
 
-            (L, North) => (L_NORTH_Y_VALS, L_NORTH_Y_MAX),
-            (L, East) => (L_EAST_Y_VALS, L_EAST_Y_MAX),
-            (L, South) => (L_SOUTH_Y_VALS, L_SOUTH_Y_MAX),
-            (L, West) => (L_WEST_Y_VALS, L_WEST_Y_MAX),
+            (L, North) => (L_NORTH_Y_VALS, L_NORTH_X_OFFSET, L_NORTH_Y_OFFSET),
+            (L, East) => (L_EAST_Y_VALS, L_EAST_X_OFFSET, L_EAST_Y_OFFSET),
+            (L, South) => (L_SOUTH_Y_VALS, L_SOUTH_X_OFFSET, L_SOUTH_Y_OFFSET),
+            (L, West) => (L_WEST_Y_VALS, L_WEST_X_OFFSET, L_WEST_Y_OFFSET),
 
-            (O, _) => (O_ALL_Y_VALS, O_ALL_Y_MAX),
+            (O, _) => (O_ALL_Y_VALS, O_ALL_X_OFFSET, O_ALL_Y_OFFSET),
 
-            (S, North | South) => (S_NORTH_SOUTH_Y_VALS, S_NORTH_SOUTH_Y_MAX),
-            (S, East | West) => (S_EAST_WEST_Y_VALS, S_EAST_WEST_Y_MAX),
+            (S, North | South) => (
+                S_NORTH_SOUTH_Y_VALS,
+                S_NORTH_SOUTH_X_OFFSET,
+                S_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (S, East | West) => (
+                S_EAST_WEST_Y_VALS,
+                S_EAST_WEST_X_OFFSET,
+                S_EAST_WEST_Y_OFFSET,
+            ),
 
-            (T, North) => (T_NORTH_Y_VALS, T_NORTH_Y_MAX),
-            (T, East) => (T_EAST_Y_VALS, T_EAST_Y_MAX),
-            (T, South) => (T_SOUTH_Y_VALS, T_SOUTH_Y_MAX),
-            (T, West) => (T_WEST_Y_VALS, T_WEST_Y_MAX),
+            (T, North) => (T_NORTH_Y_VALS, T_NORTH_X_OFFSET, T_NORTH_Y_OFFSET),
+            (T, East) => (T_EAST_Y_VALS, T_EAST_X_OFFSET, T_EAST_Y_OFFSET),
+            (T, South) => (T_SOUTH_Y_VALS, T_SOUTH_X_OFFSET, T_SOUTH_Y_OFFSET),
+            (T, West) => (T_WEST_Y_VALS, T_WEST_X_OFFSET, T_WEST_Y_OFFSET),
 
-            (Z, North | South) => (Z_NORTH_SOUTH_Y_VALS, Z_NORTH_SOUTH_Y_MAX),
-            (Z, East | West) => (Z_EAST_WEST_Y_VALS, Z_EAST_WEST_Y_MAX),
+            (Z, North | South) => (
+                Z_NORTH_SOUTH_Y_VALS,
+                Z_NORTH_SOUTH_X_OFFSET,
+                Z_NORTH_SOUTH_Y_OFFSET,
+            ),
+            (Z, East | West) => (
+                Z_EAST_WEST_Y_VALS,
+                Z_EAST_WEST_X_OFFSET,
+                Z_EAST_WEST_Y_OFFSET,
+            ),
         };
 
-        let offset = 3usize.saturating_sub(self.pos.x as usize);
-        let mut i = offset;
-        let x_ref = self.pos.x as usize - (3 - offset);
-        let max = if x_ref >= 7 {
-            10usize.saturating_sub(x_ref)
-        } else {
-            4
-        };
+        let x = self.pos.x - x_offset;
+        let y = y_offset - self.pos.y;
 
-        while i < max {
-            if ys[i] == 0 {
-                i += 1;
-                continue;
-            }
-
-            // corrects for the weird x y values everything is offset by
-            let y = BOARD_ROWS as u8 - self.pos.y + ys[i] - 5;
-            let x = x_ref + i - offset;
-
-            if y > self.surface[x] {
-                self.surface[x] = y;
-            }
-            if y > self.highest_block {
-                self.highest_block = y;
-            }
-
-            i += 1;
+        for i in x..(x + 4).min(10) {
+            let new_y = self.surface[i as usize].max(y + y_vals[(i - x) as usize]);
+            self.highest_block = self.highest_block.max(new_y);
+            self.surface[i as usize] = new_y;
         }
 
-        let mut y = (self.pos.y + y_max) as usize;
-        if y > BOARD_ROWS - 2 {
-            y = BOARD_ROWS - 2;
-        }
         let mut cleared = 0;
+        let mut y = BOARD_ROWS - 2;
 
-        while y >= self.pos.y as usize - cleared {
+        while y >= (BOARD_ROWS - 2).saturating_sub(self.highest_block as usize).saturating_sub(cleared).max(1) {
             if self.board[y] & FULL_ROW == FULL_ROW {
                 cleared += 1;
             }
+
             match cleared {
                 0 => {}
                 1 => self.board[y] = self.board[y - 1],
-                c @ 2..=4 => self.board[y + (c - 1)] = self.board[y - 1],
+                c @ 2..=4 => self.board[y + (c - 1)] = self.board[y.saturating_sub(1)],
                 _ => panic!("Clearing more than 4 lines at once should be impossible"),
             }
 
@@ -718,28 +745,34 @@ impl<'a> State<'a> {
 
         if cleared != 0 {
             self.highest_block -= cleared as u8;
-            let mut i = 0;
-            while i < 10 {
-                self.surface[i] -= cleared as u8;
-                i += 1;
-            }
+            self.surface.iter_mut().for_each(|s| *s -= cleared as u8);
+
             self.lines += cleared as u16;
-            match cleared {
-                1 => self.score += 40 * cleared as u32,
-                2 => self.score += 100 * cleared as u32,
-                3 => self.score += 300 * cleared as u32,
-                4 => self.score += 1200 * cleared as u32,
+            let delta = match cleared {
+                1 => 40 * (cleared + 1) as u32,
+                2 => 100 * (cleared + 1) as u32,
+                3 => 300 * (cleared + 1) as u32,
+                4 => 1200 * (cleared + 1) as u32,
                 _ => panic!("Clearing more than 4 lines at once should still be impossible"),
-            }
+            };
+
+            self.score += delta;
+            self.lines_delta = cleared as u8;
         }
     }
 
+    #[inline(always)]
+    pub const fn is_topped_out(&self) -> bool {
+        self.board[3] & 0b0000_0111_1110_0000 != 0
+    }
+
     pub const fn drop(&mut self) {
-        let mut i = 0;
-        while i < BOARD_ROWS {
-            self.try_down();
-            i += 1;
-        }
+        while self.try_down() {}
+        // let mut i = 0;
+        // while i < BOARD_ROWS {
+        //     self.try_down();
+        //     i += 1;
+        // }
     }
 
     #[inline(always)]

@@ -38,7 +38,7 @@ impl Rotation {
         }
     }
 
-    #[inline(always)]    
+    #[inline(always)]
     pub const fn as_ccw(self) -> Self {
         match self {
             North => West,
@@ -48,7 +48,7 @@ impl Rotation {
         }
     }
 
-    #[inline(always)]    
+    #[inline(always)]
     pub const fn as_flip(self) -> Self {
         match self {
             North => South,

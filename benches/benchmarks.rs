@@ -25,13 +25,16 @@ fn main() -> std::io::Result<()> {
             // search_visited_first,
             // search_drop_first,
             // search_drop_first_alt,
-            search_drop_first_specialized
+            // search_drop_first_specialized
             // search_const_drop_first
             // search_visited_first_alt,
         ],
         Piece::PIECES,
     );
-    bench.register(eval_preset_state, Piece::PIECES);
+    bench.register_many(
+        list![eval_surface, eval_holes, eval_score, eval_left_well, eval],
+        Piece::PIECES,
+    );
     // bench.register(search_depth_3, Piece::PIECES);
     // bench.register_many(
     //     list![search_depth_final_states],
@@ -50,7 +53,9 @@ fn main() -> std::io::Result<()> {
 }
 
 fn search_depth_3(bencher: Bencher, piece: Piece) {
-    let state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| {
         state.search_rec_visited_first_depth(3);
@@ -58,7 +63,9 @@ fn search_depth_3(bencher: Bencher, piece: Piece) {
 }
 
 fn search_depth_n(bencher: Bencher, (piece, depth): (Piece, u8)) {
-    let state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| {
         state.search_rec_visited_first_depth(depth);
@@ -66,7 +73,9 @@ fn search_depth_n(bencher: Bencher, (piece, depth): (Piece, u8)) {
 }
 
 fn search_depth_final_states(bencher: Bencher, (piece, depth): (Piece, u8)) {
-    let state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| {
         state.search_depth(depth);
@@ -74,7 +83,9 @@ fn search_depth_final_states(bencher: Bencher, (piece, depth): (Piece, u8)) {
 }
 
 fn clone_state(bencher: Bencher, piece: Piece) {
-    let state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| {
         black_box(state.clone());
@@ -82,7 +93,9 @@ fn clone_state(bencher: Bencher, piece: Piece) {
 }
 
 fn lock(bencher: Bencher, (piece, rot): (Piece, Rotation)) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     match rot {
         Rotation::North => {}
@@ -105,76 +118,124 @@ fn lock(bencher: Bencher, (piece, rot): (Piece, Rotation)) {
 }
 
 fn search_smart(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_smart())
 }
 
 fn search_naive(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_rec_naive())
 }
 
 fn search_specialized(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_rec_specialized())
 }
 
 fn search_const(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_const())
 }
 
 fn search_select_rot(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_rec_select_rot())
 }
 
 fn search_visited_first(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_visited_first())
 }
 
 fn search_visited_first_alt(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_drop_first_alt())
 }
 
 fn search_drop_first(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_drop_first())
 }
 
 fn search_drop_first_specialized(bencher: Bencher, piece: Piece) {
-    // let mut state = State::new(piece, 19, INPUT_30HZ);
-    let mut state = util::preset_state(piece);
+    let w = EvalWeights::default();
 
-    6u64.leading_zeros();
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_drop_first_specialized())
 }
 
 fn search_drop_first_alt(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_drop_first_alt())
 }
 
 fn search_const_drop_first(bencher: Bencher, piece: Piece) {
-    let mut state = State::new(piece, 19, INPUT_30HZ);
+    let w = EvalWeights::default();
+
+    let mut state = State::new(piece, 19, INPUT_30HZ, &w);
 
     bencher.bench(|| state.search_const_drop_first())
 }
 
-fn eval_preset_state<'a>(bencher: Bencher, piece: Piece) {
-    let state = util::preset_state(piece);
+fn eval(bencher: Bencher, piece: Piece) {
+    let w = EvalWeights::default();
+    let state = util::preset_state(piece, &w);
 
     bencher.bench(|| state.eval_board())
+}
+
+fn eval_surface(bencher: Bencher, piece: Piece) {
+    let w = EvalWeights::default();
+    let state = util::preset_state(piece, &w);
+
+    bencher.bench(|| state.eval_surface())
+}
+
+fn eval_holes(bencher: Bencher, piece: Piece) {
+    let w = EvalWeights::default();
+    let state = util::preset_state(piece, &w);
+
+    bencher.bench(|| state.eval_holes())
+}
+
+fn eval_score(bencher: Bencher, piece: Piece) {
+    let w = EvalWeights::default();
+    let state = util::preset_state(piece, &w);
+
+    bencher.bench(|| state.eval_score())
+}
+
+fn eval_left_well(bencher: Bencher, piece: Piece) {
+    let w = EvalWeights::default();
+    let state = util::preset_state(piece, &w);
+
+    bencher.bench(|| state.eval_left_well())
 }

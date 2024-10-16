@@ -1,11 +1,6 @@
 use ahash::AHashSet as HashSet;
 
-use crate::{
-    const_arrayvec::ArrayVec,
-    consts::*,
-    pieces::*,
-    state::*,
-};
+use crate::{const_arrayvec::ArrayVec, consts::*, pieces::*, state::*};
 
 impl<'a> State<'a> {
     pub fn search_smart_depth(&self, depth: u8) -> Vec<Board> {
@@ -36,7 +31,11 @@ impl<'a> State<'a> {
                 for pos in state.search_smart() {
                     state.pos = pos;
                     state.lock();
-                    state.search_rec_separate_final_smart_depth_helper(depth - 1, &mut encountered, &mut final_states);
+                    state.search_rec_separate_final_smart_depth_helper(
+                        depth - 1,
+                        &mut encountered,
+                        &mut final_states,
+                    );
 
                     state = self.const_clone();
                 }
@@ -50,10 +49,10 @@ impl<'a> State<'a> {
         &self,
         depth: u8,
         encountered: &mut HashSet<Board>,
-        final_states: &mut Vec<Board>
+        final_states: &mut Vec<Board>,
     ) {
         match depth {
-            0 => {},
+            0 => {}
             1 => {
                 let mut state = self.const_clone();
 
@@ -71,7 +70,7 @@ impl<'a> State<'a> {
                         state = self.const_clone();
                     }
                 }
-            },
+            }
             _ => {
                 let mut state = self.const_clone();
 
@@ -83,19 +82,23 @@ impl<'a> State<'a> {
                         state.lock();
 
                         if encountered.insert(state.board) {
-                            state.search_rec_separate_final_smart_depth_helper(depth - 1, encountered, final_states);
+                            state.search_rec_separate_final_smart_depth_helper(
+                                depth - 1,
+                                encountered,
+                                final_states,
+                            );
                         }
 
                         state = self.const_clone();
                     }
                 }
-            },
+            }
         }
     }
 
     // fn generate_dropping_positions_left(&mut self, ) {}
-    
-    pub fn search_smart(&mut self) -> ArrayVec<PiecePos, 64> {
+
+    pub fn search_smart(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -108,7 +111,7 @@ impl<'a> State<'a> {
     fn search_smart_helper(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
         frames_since_last_move: u8,
     ) {
         if frames_since_last_move >= self.input_sequence.longest_non_press {
@@ -157,7 +160,7 @@ impl<'a> State<'a> {
                 self.pos.masks <<= 1;
             }
             self.pos.x -= 1;
-    
+
             self.pos.x -= 1;
             if !self.visited(visited) {
                 self.pos.masks <<= 1;
@@ -179,18 +182,22 @@ impl<'a> State<'a> {
 
         if self.is_drop() {
             self.pos.down();
-            
+
             if self.visited(visited) {
                 self.pos.up();
                 return;
             }
-            
+
             self.visit(visited);
-            
+
             self.drop_frame = 0;
 
             if !self.collision() {
-                self.search_smart_helper(visited, final_states, frames_since_last_move + self.drop_speed as u8);
+                self.search_smart_helper(
+                    visited,
+                    final_states,
+                    frames_since_last_move + self.drop_speed as u8,
+                );
                 self.pos.up();
             } else {
                 self.pos.up();
@@ -198,7 +205,11 @@ impl<'a> State<'a> {
             }
         } else {
             self.drop_frame += 1;
-            self.search_smart_helper(visited, final_states, frames_since_last_move + self.drop_speed as u8);
+            self.search_smart_helper(
+                visited,
+                final_states,
+                frames_since_last_move + self.drop_speed as u8,
+            );
             // dbg!(self.drop_frame);
             // self.drop_frame -= 1;
         }
@@ -257,34 +268,34 @@ impl<'a> State<'a> {
 //             0 => {},
 //             1 => {
 //                 let mut state = self.const_clone();
-        
+
 //                 for start_pos in Piece::START_POSITIONS {
 //                     state.pos = start_pos;
-        
+
 //                     for pos in state.search() {
 //                         state.pos = pos;
 //                         state.fast_lock();
-        
+
 //                         encountered.insert((true, state.board));
-        
+
 //                         state = self.const_clone();
 //                     }
 //                 }
 //             },
-//             _ => {        
+//             _ => {
 //                 let mut state = self.const_clone();
-        
+
 //                 for start_pos in Piece::START_POSITIONS {
 //                     state.pos = start_pos;
-        
+
 //                     for pos in state.search() {
 //                         state.pos = pos;
 //                         state.fast_lock();
-        
+
 //                         if encountered.insert((false, state.board)) {
 //                             state.search_rec_visited_first_depth_helper(depth - 1, encountered);
 //                         }
-        
+
 //                         state = self.const_clone();
 //                     }
 //                 }
@@ -292,7 +303,7 @@ impl<'a> State<'a> {
 //         }
 //     }
 
-//     pub const fn search_rec_naive(&mut self) -> ArrayVec<PiecePos, 64> {
+//     pub const fn search_rec_naive(&mut self) -> ArrayVec<PiecePos, 128> {
 //         let mut visited = [[0; BOARD_SIZE]; 4];
 //         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -304,7 +315,7 @@ impl<'a> State<'a> {
 //     const fn search_rec_naive_helper(
 //         &mut self,
 //         visited: &mut [Board; 4],
-//         final_states: &mut ArrayVec<PiecePos, 64>,
+//         final_states: &mut ArrayVec<PiecePos, 128>,
 //     ) {
 //         if self.try_right() {
 //             if !self.visited(visited) {
@@ -356,7 +367,7 @@ impl<'a> State<'a> {
 //         }
 //     }
 
-//     pub const fn search_rec_select_rot(&mut self) -> ArrayVec<PiecePos, 64> {
+//     pub const fn search_rec_select_rot(&mut self) -> ArrayVec<PiecePos, 128> {
 //         let mut visited = [[0; BOARD_SIZE]; 4];
 //         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -368,7 +379,7 @@ impl<'a> State<'a> {
 //     const fn search_rec_select_rot_helper(
 //         &mut self,
 //         visited: &mut [Board; 4],
-//         final_states: &mut ArrayVec<PiecePos, 64>,
+//         final_states: &mut ArrayVec<PiecePos, 128>,
 //     ) {
 //         if self.try_right() {
 //             if !self.visited(visited) {
@@ -434,7 +445,7 @@ impl<'a> State<'a> {
 //         }
 //     }
 
-//     pub const fn search_rec_specialized(&mut self) -> ArrayVec<PiecePos, 64> {
+//     pub const fn search_rec_specialized(&mut self) -> ArrayVec<PiecePos, 128> {
 //         let mut visited = [[0; BOARD_SIZE]; 4];
 //         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -450,7 +461,7 @@ impl<'a> State<'a> {
 //     const fn search_rec_jlt(
 //         &mut self,
 //         visited: &mut [Board; 4],
-//         final_states: &mut ArrayVec<PiecePos, 64>,
+//         final_states: &mut ArrayVec<PiecePos, 128>,
 //     ) {
 //         self.pos.x += 1;
 //         if !self.visited(visited) {
@@ -509,7 +520,7 @@ impl<'a> State<'a> {
 //     const fn search_rec_isz(
 //         &mut self,
 //         visited: &mut [Board; 4],
-//         final_states: &mut ArrayVec<PiecePos, 64>,
+//         final_states: &mut ArrayVec<PiecePos, 128>,
 //     ) {
 //         self.pos.x += 1;
 //         if !self.visited(visited) {
@@ -561,7 +572,7 @@ impl<'a> State<'a> {
 //     const fn search_rec_o(
 //         &mut self,
 //         visited: &mut [Board; 4],
-//         final_states: &mut ArrayVec<PiecePos, 64>,
+//         final_states: &mut ArrayVec<PiecePos, 128>,
 //     ) {
 //         self.pos.x += 1;
 //         if !self.visited(visited) {

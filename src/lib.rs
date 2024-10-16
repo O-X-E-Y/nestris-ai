@@ -1,7 +1,4 @@
-#![feature(
-    const_fmt_arguments_new,
-    const_option,
-)]
+#![feature(const_fmt_arguments_new, const_option)]
 
 pub mod const_arrayvec;
 pub mod consts;
@@ -15,15 +12,13 @@ pub mod search_smart2;
 pub mod search_visited_alt;
 pub mod state;
 pub mod util;
+pub mod weights;
 
 pub mod prelude {
     pub use crate::{
-        consts::{
-            BOARD_ROWS,
-            EMPTY_BOARD,
-            input_hz::*
-        },
+        consts::{input_hz::*, BOARD_ROWS, EMPTY_BOARD},
         pieces::{Piece, Rotation},
         state::State,
+        weights::EvalWeights,
     };
 }

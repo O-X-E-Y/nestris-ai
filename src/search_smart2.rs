@@ -35,7 +35,11 @@ impl<'a> State<'a> {
                 for pos in state.search_smart2() {
                     state.pos = pos;
                     state.lock();
-                    state.search_smart2_final_depth_helper(depth - 1, &mut encountered, &mut final_states);
+                    state.search_smart2_final_depth_helper(
+                        depth - 1,
+                        &mut encountered,
+                        &mut final_states,
+                    );
 
                     state = self.const_clone();
                 }
@@ -49,10 +53,10 @@ impl<'a> State<'a> {
         &self,
         depth: u8,
         encountered: &mut HashSet<Board>,
-        final_states: &mut Vec<Board>
+        final_states: &mut Vec<Board>,
     ) {
         match depth {
-            0 => {},
+            0 => {}
             1 => {
                 let mut state = self.const_clone();
 
@@ -70,7 +74,7 @@ impl<'a> State<'a> {
                         state = self.const_clone();
                     }
                 }
-            },
+            }
             _ => {
                 let mut state = self.const_clone();
 
@@ -82,17 +86,21 @@ impl<'a> State<'a> {
                         state.lock();
 
                         if encountered.insert(state.board) {
-                            state.search_smart2_final_depth_helper(depth - 1, encountered, final_states);
+                            state.search_smart2_final_depth_helper(
+                                depth - 1,
+                                encountered,
+                                final_states,
+                            );
                         }
 
                         state = self.const_clone();
                     }
                 }
-            },
+            }
         }
     }
 
-    pub const fn search_smart2(&mut self) -> ArrayVec<PiecePos, 64> {
+    pub const fn search_smart2(&mut self) -> ArrayVec<PiecePos, 128> {
         let mut visited = [[0; BOARD_ROWS]; 4];
         let mut final_states = ArrayVec::new_const(PiecePos::DEFAULT);
 
@@ -104,7 +112,7 @@ impl<'a> State<'a> {
     const fn search_smart2_helper(
         &mut self,
         visited: &mut [Board; 4],
-        final_states: &mut ArrayVec<PiecePos, 64>,
+        final_states: &mut ArrayVec<PiecePos, 128>,
     ) {
         // flip before checking left/right seems to improve performance
         match self.pos.piece {
@@ -153,7 +161,7 @@ impl<'a> State<'a> {
                 self.pos.masks <<= 1;
             }
             self.pos.x -= 1;
-    
+
             self.pos.x -= 1;
             if !self.visited(visited) {
                 self.pos.masks <<= 1;
@@ -171,14 +179,14 @@ impl<'a> State<'a> {
 
         if self.is_drop() {
             self.pos.down();
-    
+
             if self.visited(visited) {
                 self.pos.up();
                 return;
             }
-    
+
             self.visit(visited);
-    
+
             if !self.collision() {
                 self.search_smart2_helper(visited, final_states);
                 self.pos.up();
