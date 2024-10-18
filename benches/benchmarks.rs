@@ -237,5 +237,5 @@ fn eval_left_well(bencher: Bencher, piece: Piece) {
     let w = EvalWeights::default();
     let state = util::preset_state(piece, &w);
 
-    bencher.bench(|| state.eval_left_well())
+    bencher.bench(|| state.eval_well())
 }

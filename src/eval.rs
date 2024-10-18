@@ -5,7 +5,7 @@ impl<'a> State<'a> {
         self.eval_surface()
             + self.eval_holes()
             + self.eval_score()
-            + self.eval_left_well()
+            + self.eval_well()
             + self.eval_highest_point()
     }
 
@@ -13,29 +13,35 @@ impl<'a> State<'a> {
         self.highest_block as i32 * self.weights.highest_point_multiplier
     }
 
-    pub fn eval_left_well(&self) -> i32 {
-        const RIGHT_COLUMN: u16 = 1 << 3;
-        const RIGHT_WELL: u16 = FULL_ROW & (!RIGHT_COLUMN);
+    pub fn eval_well(&self) -> i32 {
+        let mut highest_well_height = 0;
 
-        let mut well_height = 0;
+        for i in 0..10 {
+            let column: u16 = 1 << (3 + i);
+            let well: u16 = FULL_ROW & (!column);
 
-        let floor = BOARD_ROWS - 2;
-        let ceil = floor - self.surface[9] as usize - 1;
+            let mut well_height = 0;
 
-        for y in ceil..=floor {
-            let row = self.board[y];
+            let floor = BOARD_ROWS - 2;
+            let ceil = floor - self.surface[9] as usize - 1;
 
-            if RIGHT_COLUMN & row != 0 {
-                break;
+            for y in ceil..=floor {
+                let row = self.board[y];
+
+                if column & row != 0 {
+                    break;
+                }
+                if well & row == well {
+                    well_height += 1;
+                } else {
+                    well_height = 0;
+                }
             }
-            if RIGHT_WELL & row == RIGHT_WELL {
-                well_height += 1;
-            } else {
-                well_height = 0;
-            }
+
+            highest_well_height = highest_well_height.max(well_height);
         }
 
-        self.weights.well_height[well_height]
+        self.weights.well_height[highest_well_height]
 
         // match well_height {
         //     0 => 0,

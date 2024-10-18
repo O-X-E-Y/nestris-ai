@@ -1,7 +1,5 @@
 // #![feature(const_mut_refs)]
 
-use std::io::Write;
-
 use itertools::Itertools;
 // use nestris_ai::{const_arrayvec::ArrayVec, consts::input_hz::*, pieces::*, state::*};
 

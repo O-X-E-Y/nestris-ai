@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{consts::*, pieces::*, util::*, weights::EvalWeights};
 
 pub type Board = [u16; BOARD_ROWS];

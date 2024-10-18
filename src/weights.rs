@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 use itertools::Itertools;
 use nanorand::{Rng, WyRand};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
