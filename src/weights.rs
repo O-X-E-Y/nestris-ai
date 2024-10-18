@@ -291,6 +291,7 @@ impl EvalWeights {
                 i @ 32..36 => res.line_multipliers[i - 32] += diff,
                 i @ 36..73 => res.surface[i - 36] += diff,
                 73 => res.highest_point_multiplier += diff,
+                74 => res.tetris_ready += diff,
                 _ => unreachable!(),
             }
         }
@@ -298,11 +299,12 @@ impl EvalWeights {
         res
     }
 
-    fn random(rng: &mut WyRand, range: i32) -> Self {
+    pub fn random(rng: &mut WyRand, range: i32) -> Self {
         let mut w = Self::default();
 
         w.hole_multiplier = rng.generate_range(0..range) - range / 2;
         w.over_three_multiplier = rng.generate_range(0..range) - range / 2;
+        w.tetris_ready = rng.generate_range(0..range) - range / 2;
         for i in 0..(w.col_weights.len()) {
             w.col_weights[i] = rng.generate_range(0..range) - range / 2;
         }
