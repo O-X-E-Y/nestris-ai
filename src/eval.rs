@@ -41,7 +41,13 @@ impl<'a> State<'a> {
             highest_well_height = highest_well_height.max(well_height);
         }
 
-        self.weights.well_height[highest_well_height]
+        if highest_well_height >= 4 {
+            self.weights.well_height[highest_well_height] + self.weights.tetris_ready
+        } else {
+            self.weights.well_height[highest_well_height]
+        }
+
+
 
         // match well_height {
         //     0 => 0,
